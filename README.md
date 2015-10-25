@@ -1,5 +1,5 @@
 # mongobase
-lightway O/R mapper for pymongo
+lightweight O/R mapper for pymongo
 
 ###Dependencies
 - pymongo_ 1.9+
