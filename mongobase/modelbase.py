@@ -7,7 +7,7 @@
 import datetime
 from importlib import import_module
 from uuid import uuid4
-from config import MONOGO_DB_HOST, MONGO_DB_PORT, MONGO_DB_NAME
+from mongobase_config import MONOGO_DB_HOST, MONGO_DB_PORT, MONGO_DB_NAME
 from logger import logger
 from exceptions import RequiredKeyIsNotSatisfied
 from pymongo import TEXT
