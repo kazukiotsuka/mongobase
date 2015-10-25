@@ -10,7 +10,8 @@ lightway O/R mapper for pymongo
 ```python
 animal_name = 'wild boar'
 new_animal = Animal({
-    'name': animal_name
+    'name': animal_name,
+    'kind': 'cat'
     })
 same_animal = Animal.findOne({'name': animal_name})
 if same_animal:
@@ -23,7 +24,7 @@ else:
 ###### mongobase instance works both as object and dict
 
 ```python
-a_cat = Animal.findOne({'name': 'cat'})
+a_cat = Animal.findOne({'kind': 'cat'})
 a_cat.age = 2
 a_cat['keeper'] = {'name': 'spam egg', 'gender': 'male'}
 a_cat.update()
@@ -32,10 +33,13 @@ a_cat.update()
 ###### find with mongodb dictionary / return mongobase instances list
 
 ```python
-mammals = Animal.find({'keeper': {'$exists': True}, 'type': 'mammal'}, limit=10, skip=10)
-for mammal in mammals:
-  print mammal.name
-  print mammal.keeper
+vertebrates = Animal.find({'keeper': {'$exists': True}, 'type': 'vertebrate'}, limit=10, skip=10)
+for vertebrate in vertebrates:
+  print vertebrate.kind
+  print vertebrate.keeper
+
+mouse = Animal.findOne({'type': 'mammal', 'age': 10, 'kind':'mouse'})
+print mouse # <Animal name='micky'>
 ```
 
 ###### automatic required field / type check
@@ -46,9 +50,10 @@ new_animal = Animal({
 })
 new_animal.save() # raise RequieredKeyIsNotSatisfied exception
 new_animal = Animal({
-  'name': 101
+  'name': 'tom',
+  'type': 101
 })
-new_animal.save() # raise TypeError exception
+new_animal.save() # raise TypeError exception 'the key type must be unicode'
 ```
 
 ###### automatically generate textSearch model with bigram
@@ -59,8 +64,9 @@ class Animal(ModelBase):
     __indexed_key__ = 'name' # search gram key
     ...
 ```
+
 ```python
-search_key = generateBigram(name) # name:'reindeer' -> search_key:'re ei in nd de ee er'
+search_key = generateBigram(name) # name:'big reindeer' -> search_key:'bi ig gr re ei in nd de ee er'
 animals = Animal.textSearch(search_key, limit=1, skip=0)
 ```
 
