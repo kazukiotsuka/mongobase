@@ -21,7 +21,8 @@ else:
     return new_animal.save()
 ```
 
-###### mongobase instance works both as object and dict
+#####object/dict
+mongobase instance works both as object and dict
 
 ```python
 a_cat = Animal.findOne({'kind': 'cat'})
@@ -30,7 +31,8 @@ a_cat['keeper'] = {'name': 'spam egg', 'gender': 'male'}
 a_cat.update()
 ```
 
-###### find with mongodb dictionary / return mongobase instances list
+#####find and fetch data
+find with mongodb dictionary and return mongobase instances list
 
 ```python
 vertebrates = Animal.find({'keeper': {'$exists': True}, 'type': 'vertebrate'}, limit=10, skip=10)
@@ -42,7 +44,8 @@ mouse = Animal.findOne({'type': 'mammal', 'age': 10, 'kind':'mouse'})
 print mouse # <Animal name='micky'>
 ```
 
-###### automatic required field / type check
+#####automatic value check
+automatic required field / type check
 
 ```python
 new_animal = Animal({
@@ -56,7 +59,8 @@ new_animal = Animal({
 new_animal.save() # raise TypeError exception 'the key type must be unicode'
 ```
 
-###### automatically generate textSearch model with bigram
+#####text search
+automatically generate textSearch model with bigram
 
 ```python
 class Animal(ModelBase):
@@ -71,7 +75,8 @@ animals = Animal.textSearch(search_key, limit=1, skip=0)
 ```
 
 
-###### model definition
+#####model definition
+model definition example
 
 ```python
 class Animal(ModelBase):
