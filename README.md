@@ -1,7 +1,12 @@
 # mongobase
-lightway orm mapper for pymongo
+lightway O/R mapper for pymongo
 
-### basic usage
+###Dependencies
+- pymongo_ 1.9+
+
+
+###Basic usage
+
 ```python
 animal_name = 'wild boar'
 new_animal = Animal({
