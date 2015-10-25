@@ -1,0 +1,4 @@
+*.pyc
+*~
+mongobase.egg-info/
+mongobase/config.py
