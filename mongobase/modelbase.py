@@ -3,6 +3,71 @@
 #
 # modelbase.py
 # mongobase
+#
+# A lightweight ORM for pymongo.
+#
+#
+# MODEL DEFINITION:
+# 1. create a subclass.
+# 2. set each definitions as below in the subclass.
+#
+#    __collection__ = ''  # set the collection name
+#    __database__ = ''  # set the name of db restoring this instance
+#    __structure__ = {}  # define keys and the data type
+#    __required_fields__ = []  # lists required keys
+#    __default_values__ = {}  # set default values to some keys
+#    __validators__ = {}  # set pairs like key: validatefunc()
+#    __indexed_key__ = ''  # set the index key for text search
+#
+#
+# 3. define insert/update methods in the subclass.
+#    as an example,
+#
+#    def save(self, should_return_if_exists=False):
+#        return self.insertIfNotExistsWithKeys(
+#            should_return_if_exists, 'email')
+#
+#    def update(self):
+#        return self.updateWithCorrespondentKey('_id')
+#
+#
+# API:
+# 1. insert methods
+#   - insertIfNotExistsWithKeys(
+#       should_return_if_exists=False, *args) [Instance method]
+#   - insertIfNotExistsWithQueryDict(
+#       self, query, should_return_if_exists=False) [Instance method]
+#
+# 2. update methods
+#   - updateWithCorrespondentKey(self, find_key) [Instance method]
+#   - findAndUpdateById(cls, _id, updates) [Class method]
+#
+# 3. find methods
+#   - find(cls, query, limit=None, skip=None, sort=None) [Class method]
+#   - findOne(cls, query) [Class method]
+#   - findAll(cls) [Class method]
+#   - textSearch(cls, text, limit, skip) [Class method]
+#
+# 4. others
+#   - count(cls) [Class method]
+#   - remove(cls, query) [Class method]
+#
+#
+# BASIC USAGE EXAMPLE:
+#
+# animal_name = 'wild boar'
+# new_animal = Animal({
+#     'name': animal_name,
+#     'kind': 'cat'
+#     })
+# same_animal = Animal.findOne({'name': animal_name})
+# if same_animal:
+#     same_animal.count = same_animal.count + 1
+#     return same_animal.update()
+# else:
+#     return new_animal.save()
+#
+#
 
 import datetime
 from importlib import import_module
@@ -10,18 +75,20 @@ from uuid import uuid4
 from mongobase_config import MONOGO_DB_HOST, MONGO_DB_PORT, MONGO_DB_NAME
 from logger import logger
 from exceptions import RequiredKeyIsNotSatisfied
-from pymongo import TEXT
+from pymongo import TEXT, MongoClient
 
-client = MongoClient(MONOG_DB_HOST, MONGO_DB_PORT)
+client = MongoClient(MONOGO_DB_HOST, MONGO_DB_PORT)
 db = client[MONGO_DB_NAME]
 
+
 class ModelBase(dict):
-    __collection__ = ''
-    __database__ = ''
-    __structure__ = {}
-    __required_fields__ = {}
-    __default_values__ = {}
-    __validators__ = {}
+    __collection__ = ''  # set the collection name
+    __database__ = ''  # set the name of db restoring this instance
+    __structure__ = {}  # define keys and the data type
+    __required_fields__ = []  # lists required keys
+    __default_values__ = {}  # set default values to some keys
+    __validators__ = {}  # set pairs like key: validatefunc()
+    __indexed_key__ = ''  # set the index key for text search
 
     # attributed dictionary extension
     # obj['foo'] <-> obj.foo
@@ -44,14 +111,22 @@ class ModelBase(dict):
         return setattr(self, key, value)
 
     def purify(self):
-        # return the dictionary extracted
-        # only properties written in the structure
+        """Return the instance as dictionary format.
+
+        Return the dictionary
+        only with properties written in the structure
+        """
         extracted = {}
         for key in self.__structure__:
             extracted[key] = self[key]
         return extracted
 
-    def validate(self, target=None):
+    def __validate(self, target=None):
+        """Validate the properties usually before insert/update it.
+
+        1. validate values according to rules written in the __validators__
+        2. validate values according to types written in the __structure__
+        """
         if target is None:
             target = self
         # validate values according to rules in the __validators__
@@ -68,7 +143,11 @@ class ModelBase(dict):
                         .format(
                             key, self.__structure__[key], type(target[key])))
 
-    def checkRequiredFields(self):
+    def __checkRequiredFields(self):
+        """Check if required fields are filled before insert it.
+
+        Required fields are defined in __required_fields__.
+        """
         for key in self.__required_fields__:
             if not getattr(self, key):
                 raise RequiredKeyIsNotSatisfied(
@@ -79,14 +158,21 @@ class ModelBase(dict):
 
     @classmethod
     def generateInstances(cls, documents):
+        """Return this instances converted from dicts in documents.
+
+        Convert dict objects to this instance and return them.
+        """
         for obj in documents:
             yield cls(obj)
 
     @staticmethod
     def generateSearchGram(origin_text):
-        # 'Some text value'
-        # -> 'Some text value
-        #     So om me et te xt tv va al lu ue'
+        """Generate Text search bi-gram.
+
+        'Some text value'
+        -> 'Some text value
+            So om me et te xt tv va al lu ue'
+        """
         search_gram = ''
         search_gram += origin_text
         # search_gram: 'Some text value'
@@ -104,16 +190,27 @@ class ModelBase(dict):
         #               So om me et te ex xt tv va al lu ue'
         return search_gram
 
-    def insert(self, inserts, uuid):
-        # db.collection.insert(inserts)
-        #
+    def __insert(self, inserts, uuid):
+        """The wrapper for db[collection_name].insert() in pymongo.
+
+        Before and after calling insert() of pymongo, do things as below.
+
+        1. set search text with generateSearchGram.
+        2. validate instance properties with __validate().
+        3. call pymongo insert() method.
+        4. call pymongo create_index() method if __index_key__ has been set.
+
+        The insert() method in pymongo executes
+        db.collection.insert(inserts)
+        method in mongo db.
+        """
         # set search_text
         if self.__indexed_key__:
             origin_text = self[self.__indexed_key__]
             inserts.update(
                 {'search_text': self.generateSearchGram(origin_text)})
         # validate
-        self.validate(inserts)
+        self.__validate(inserts)
         # insert
         if db[self.__collection__].insert(inserts):
             # create search index after inserted
@@ -127,20 +224,30 @@ class ModelBase(dict):
             return None
 
     def insertIfNotExistsWithKeys(self, should_return_if_exists=False, *args):
-        # insert if not exists
-        #
-        # [when inserted]
-        # return self if inserted
-        #
-        # [when not inserted]
-        # return None (should_return is False)
-        # return stored element with the same key (should_return is True)
+        """Insert this instance to db (If not already exists).
+
+        Return value:
+        A. If successfully inserted, it returns this instance itself.
+        B1. If failed && sould_return is False, it returns None.
+        B2. If failed && should_return is True,
+        it returns the instance which already have the same key.
+
+        The second argument should be the list of keys or a string key name.
+        """
         query = {key: getattr(self, key) for key in args}
         return self.insertIfNotExistsWithQueryDict(
             query, should_return_if_exists)
 
     def insertIfNotExistsWithQueryDict(
             self, query, should_return_if_exists=False):
+        """Insert this instance to db (avoid more specific deplications).
+
+
+        The second argument 'query' should be the dictionary which is composed
+        of the key value pairs.
+        And only when no data with these key value pairs exists,
+        the instance will be inserted.
+        """
         exist = db[self.__collection__].find_one(query)
         if bool(query) and exist:
             logger('ALREADY EXISTS, NOT SAVE')
@@ -152,7 +259,7 @@ class ModelBase(dict):
                 return Class(exist)
             return None
         else:
-            assert self.checkRequiredFields(), 'Reqired Key Error'
+            assert self.__checkRequiredFields(), 'Reqired Key Error'
             inserts = self.purify()
             if '_id' in inserts and inserts['_id'] is not None:
                 uuid = self._id
@@ -160,10 +267,19 @@ class ModelBase(dict):
                 uuid = unicode('{}-{}'.format(self.__collection__, uuid4()))
             inserts['_id'] = uuid
             logger(inserts)
-            self.insert(inserts, uuid)
+            self.__insert(inserts, uuid)
             return self
 
     def updateWithCorrespondentKey(self, find_key):
+        """Update a stored instance.(Instance method)
+
+        Update a stored instance having the same value on the key
+        appointed by find_key.
+        The find_key:value pair is passed to pymongo find_and_update()
+        method.
+
+        Eventually, __findAndUpdate is called.
+        """
         # update self instance
         if hasattr(self, find_key) and getattr(self, find_key):
             # updates as full document dictionary
@@ -174,13 +290,20 @@ class ModelBase(dict):
                 updates['search_text'] =\
                     self.generateSearchGram(updates[self.__indexed_key__])
             # validate
-            self.validate(updates)
-            return ModelBase.findAndModifyWithUpdateDict(
+            self.__validate(updates)
+            return ModelBase.__findAndUpdate(
                 self, find_key, getattr(self, find_key), updates)
         return None
 
     @classmethod
     def findAndUpdateById(cls, _id, updates):
+        """Find and update.(Class method)
+
+        1st argument is _id(ObjectId).
+        2nd argument is dictionary consisted of key,value pairs to update.
+
+        Eventually, __findAndUpdate is called.
+        """
         # update from class by _id
         logger(u'FIND AND UPDATE {} WITH {}'.format(_id, updates))
         # updates must be like {'$set': {'key': val,...}}
@@ -196,28 +319,30 @@ class ModelBase(dict):
                 cls.generateSearchGram(updates['$set'][cls.__indexed_key__])
         # validate
         check_instance = ModelBase(updates)
-        check_instance.validate()
-        return ModelBase.findAndModifyWithUpdateDict(cls, '_id', _id, updates)
+        check_instance.__validate()
+        return ModelBase.__findAndUpdate(cls, '_id', _id, updates)
 
     @staticmethod
-    def findAndModifyWithUpdateDict(
+    def __findAndUpdate(
             cls_or_instance, find_key, find_val, updates):
-        '''
-        pymongo 3.0
-        return db[self.__collection__].find_one_and_update(
-            {find_key: getattr(self, find_key)}, updates)
-        '''
+        """Find and update.(Static method)
+
+        This is the wrapper method of find_one_and_update() in pymongo.
+        """
         # validate
         check_instance = ModelBase(updates)
-        check_instance.validate()
-        return db[cls_or_instance.__collection__].find_and_modify(
-            {find_key: find_val}, updates, upsert=False)
+        check_instance.__validate()
+        return db[cls_or_instance.__collection__].find_one_and_update(
+            {find_key: find_val}, updates)
 
     @classmethod
     def find(cls, query, limit=None, skip=None, sort=None):
-        # return the list of ModelBase objects if found or
-        # return None if not found
+        """Find and return instances.
 
+        Return value:
+        A. list of ModelBase instances. (if found)
+        B. None. (if not found)
+        """
         # limit & skip & sort
         if limit and skip and sort:
             results = db[cls.__collection__]\
@@ -254,8 +379,12 @@ class ModelBase(dict):
 
     @classmethod
     def findOne(cls, query):
-        # return ModelBase object if found or
-        # return None if not found
+        """Find one and return the instance.
+
+        Return value:
+        A. a ModelBase instance. (if found)
+        B. None. (if not found)
+        """
         result = db[cls.__collection__].find_one(query)
         if result:
             return cls(result)
@@ -264,13 +393,24 @@ class ModelBase(dict):
 
     @classmethod
     def findAll(cls):
-        # return the list of ModelBase objects if found or
-        # return None if not found
+        """Find all and return all instances of the class.
+
+        Return value:
+        A. list of ModelBase instances. (if found)
+        B. None. (if not found)
+        """
         results = db[cls.__collection__].find()
         return list(cls.generateInstances(results))
 
     @classmethod
     def textSearch(cls, text, limit, skip):
+        """Find by text search and return all matched instances.
+
+        Args:
+        1. search text(str)
+        2. limit(int)
+        3. skip(int)
+        """
         # return ...
         cursor = db[cls.__collection__].find(
             {'$text': {'$search': text}},
@@ -280,15 +420,21 @@ class ModelBase(dict):
 
     @classmethod
     def count(cls):
-        # return the number of sub class documents
+        """Return the number of the documents.
+
+        The wrapper of count() method in pymongo.
+        """
         return db[cls.__collection__].count()
 
     @classmethod
     def remove(cls, query):
+        """Remove documents matched with given key/values.
+
+        The wrapper of remove() method in pymongo.
+        """
         result = db[cls.__collection__].remove(query)
         logger(result)
         if 'ok' in result:
             return True if result['ok'] else None
         else:
             return False
-
