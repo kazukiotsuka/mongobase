@@ -2,7 +2,7 @@
 lightweight O/R mapper for pymongo
 
 ###Dependencies
-- pymongo_ 1.9+
+- pymongo_ 3.0+
 
 
 ###Basic usage
