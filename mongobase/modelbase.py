@@ -4,8 +4,9 @@
 # modelbase.py
 # mongobase
 #
-# A lightweight ORM for pymongo.
-#
+# SETTINGS:
+#   At first, set up MONGO_DB_HOST, MONGO_DB_PORT, MONGO_DB_NAME
+#   in mongobase_config.py.
 #
 # MODEL DEFINITION:
 # 1. create a subclass.
@@ -69,16 +70,14 @@
 #
 #
 
+
 import datetime
+import logging
 from importlib import import_module
 from uuid import uuid4
-from mongobase_config import MONOGO_DB_HOST, MONGO_DB_PORT, MONGO_DB_NAME
-from logger import logger
+from mongobase_config import MONGO_DB_HOST, MONGO_DB_PORT, MONGO_DB_NAME
 from exceptions import RequiredKeyIsNotSatisfied
 from pymongo import TEXT, MongoClient
-
-client = MongoClient(MONOGO_DB_HOST, MONGO_DB_PORT)
-db = client[MONGO_DB_NAME]
 
 
 class ModelBase(dict):
@@ -95,7 +94,15 @@ class ModelBase(dict):
     __getattr__ = dict.__getitem__
     __setattr__ = dict.__setitem__
 
+    __client = MongoClient(
+        MONGO_DB_HOST, MONGO_DB_PORT)
+    __db = __client[MONGO_DB_NAME]
+
     def __init__(self, init_dict):
+        self.__client = MongoClient(
+            MONGO_DB_HOST, MONGO_DB_PORT)
+        self.__db = self.__client[MONGO_DB_NAME]
+
         # set properties written in __structure__
         for key in self.__structure__:
             default_val = self.__default_values__[key]\
@@ -131,7 +138,7 @@ class ModelBase(dict):
             target = self
         # validate values according to rules in the __validators__
         for name in self.__validators__:
-            logger(u'VALIDATE {}'.format(name))
+            logging.info(u'VALIDATE {}'.format(name))
             assert self.__validators__[name](target[name])
         # validate values according to types written in the __structure__
         for key in self.__structure__:
@@ -177,13 +184,13 @@ class ModelBase(dict):
         search_gram += origin_text
         # search_gram: 'Some text value'
         origin_text_without_space = origin_text.replace(' ', '')
-        for i in xrange(3, len(origin_text_without_space)+1):
+        for i in range(3, len(origin_text_without_space)+1):
             search_gram += ' '
             search_gram += origin_text_without_space[0:i]
         # search_gram: 'Some text value Som Some Somet Somete Sometex Sometext
         #               Sometextv Sometextva Sometextval Sometextvalu
         #               Sometextvalue'
-        for i in xrange(0, len(origin_text_without_space)-1):
+        for i in range(0, len(origin_text_without_space)-1):
             search_gram += ' '
             search_gram += origin_text_without_space[i:i+2]
         # search_gram: 'Some text value
@@ -212,13 +219,13 @@ class ModelBase(dict):
         # validate
         self.__validate(inserts)
         # insert
-        if db[self.__collection__].insert(inserts):
+        if self.__db[self.__collection__].insert(inserts):
             # create search index after inserted
             if self.__indexed_key__:
-                db[self.__collection__].create_index(
+                self.__db[self.__collection__].create_index(
                     [('search_text', TEXT)], default_language='english')
             self._id = uuid
-            logger(u'NEW {} CREATED'.format(self))
+            logging.info(u'NEW {} CREATED'.format(self))
             return uuid
         else:
             return None
@@ -248,9 +255,9 @@ class ModelBase(dict):
         And only when no data with these key value pairs exists,
         the instance will be inserted.
         """
-        exist = db[self.__collection__].find_one(query)
+        exist = self.__db[self.__collection__].find_one(query)
         if bool(query) and exist:
-            logger('ALREADY EXISTS, NOT SAVE')
+            logging.info('ALREADY EXISTS, NOT SAVE')
             if should_return_if_exists:
                 class_name = '{}{}'.format(
                     self.__collection__[0].upper(), self.__collection__[1:-1])
@@ -264,9 +271,9 @@ class ModelBase(dict):
             if '_id' in inserts and inserts['_id'] is not None:
                 uuid = self._id
             else:
-                uuid = unicode('{}-{}'.format(self.__collection__, uuid4()))
+                uuid = str('{}-{}'.format(self.__collection__, uuid4()))
             inserts['_id'] = uuid
-            logger(inserts)
+            logging.info(inserts)
             self.__insert(inserts, uuid)
             return self
 
@@ -305,7 +312,7 @@ class ModelBase(dict):
         Eventually, __findAndUpdate is called.
         """
         # update from class by _id
-        logger(u'FIND AND UPDATE {} WITH {}'.format(_id, updates))
+        logging.info(u'FIND AND UPDATE {} WITH {}'.format(_id, updates))
         # updates must be like {'$set': {'key': val,...}}
         # otherwise, the rest of fields will be removed
         if '$set' in updates:
@@ -332,8 +339,9 @@ class ModelBase(dict):
         # validate
         check_instance = ModelBase(updates)
         check_instance.__validate()
-        return db[cls_or_instance.__collection__].find_one_and_update(
-            {find_key: find_val}, updates)
+
+        return cls_or_instance.__db[cls_or_instance.__collection__]\
+            .find_one_and_update({find_key: find_val}, updates)
 
     @classmethod
     def find(cls, query, limit=None, skip=None, sort=None):
@@ -345,35 +353,35 @@ class ModelBase(dict):
         """
         # limit & skip & sort
         if limit and skip and sort:
-            results = db[cls.__collection__]\
+            results = cls.__db[cls.__collection__]\
                 .find(query).sort(sort).skip(skip).limit(limit)
 
         # limit & skip
         elif limit and skip and not sort:
-            results = db[cls.__collection__]\
+            results = cls.__db[cls.__collection__]\
                 .find(query).skip(skip).limit(limit)
         # limit & sort
         elif limit and not skip and sort:
-            results = db[cls.__collection__]\
+            results = cls.__db[cls.__collection__]\
                 .find(query).sort(sort).limit(limit)
         # skip & sort
         elif not limit and skip and sort:
-            results = db[cls.__collection__]\
+            results = cls.__db[cls.__collection__]\
                 .find(query).sort(sort).skip(skip)
 
         # limit
         elif limit and not skip and not sort:
-            results = db[cls.__collection__].find(query).limit(limit)
+            results = cls.__db[cls.__collection__].find(query).limit(limit)
         # skip
         elif not limit and skip and not sort:
-            results = db[cls.__collection__].find(query).skip(skip)
+            results = cls.__db[cls.__collection__].find(query).skip(skip)
         # sort
         elif not limit and not skip and sort:
-            results = db[cls.__collection__].find(query).sort(sort)
+            results = cls.__db[cls.__collection__].find(query).sort(sort)
 
         # (just find)
         else:
-            results = db[cls.__collection__].find(query)
+            results = cls.__db[cls.__collection__].find(query)
 
         return list(cls.generateInstances(results))
 
@@ -385,6 +393,10 @@ class ModelBase(dict):
         A. a ModelBase instance. (if found)
         B. None. (if not found)
         """
+        client = MongoClient(
+            MONGO_DB_HOST, MONGO_DB_PORT)
+        db = client[MONGO_DB_NAME]
+
         result = db[cls.__collection__].find_one(query)
         if result:
             return cls(result)
@@ -399,6 +411,10 @@ class ModelBase(dict):
         A. list of ModelBase instances. (if found)
         B. None. (if not found)
         """
+        client = MongoClient(
+            MONGO_DB_HOST, MONGO_DB_PORT)
+        db = client[MONGO_DB_NAME]
+
         results = db[cls.__collection__].find()
         return list(cls.generateInstances(results))
 
@@ -412,7 +428,7 @@ class ModelBase(dict):
         3. skip(int)
         """
         # return ...
-        cursor = db[cls.__collection__].find(
+        cursor = cls.__db[cls.__collection__].find(
             {'$text': {'$search': text}},
             {'score': {'$meta': 'textScore'}}).skip(skip).limit(limit)
         cursorResults = cursor.sort([('score', {'$meta': 'textScore'})])
@@ -424,7 +440,7 @@ class ModelBase(dict):
 
         The wrapper of count() method in pymongo.
         """
-        return db[cls.__collection__].count()
+        return cls.__db[cls.__collection__].count()
 
     @classmethod
     def remove(cls, query):
@@ -432,8 +448,8 @@ class ModelBase(dict):
 
         The wrapper of remove() method in pymongo.
         """
-        result = db[cls.__collection__].remove(query)
-        logger(result)
+        result = cls.__db[cls.__collection__].remove(query)
+        logging.info(result)
         if 'ok' in result:
             return True if result['ok'] else None
         else:
