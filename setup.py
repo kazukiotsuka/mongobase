@@ -1,31 +1,28 @@
-import pathlib
-from setuptools import setup
+import setuptools
+import pymongo
 
-# The directory containing this file
-HERE = pathlib.Path(__file__).parent
+with open("README.md", "r") as f:
+    long_description = f.read()
 
-# The text of the README file
-README = (HERE / "README.md").read_text()
-
-# This call to setup() does all the work
-setup(
+setuptools.setup(
     name="mongobase",
-    version="1.0.0",
-    description="A lightweight MongoDB OR mapper.",
-    long_description=README,
-    long_description_content_type="text/markdown",
-    url="https://github.com/kazukiotsuka/mongobase",
+    version="0.3.0a0",
     author="Kazuki Otsuka",
     author_email="otsuka.kazuki@googlemail.com",
+    description="A lightweight Pythonic OR Mapper for MongoDB.",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    url="https://github.com/kazukiotsuka/mongobase",
     license="MIT",
+    keywords=["mongodb", "mongo", "pymongo", "orm", "or mapper"],
+    packages=setuptools.find_packages(),
+    install_requires=["pymongo>=3.6.0"],
+    python_requires='~=3.6',
     classifiers=[
         "License :: OSI Approved :: MIT License",
-        "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.7",
+        "Intended Audience :: Developers",
+        "Topic :: Database :: Front-Ends",
+        "Topic :: Software Development :: Libraries"
     ],
-    packages=["mongobase"],
-    include_package_data=True,
-    install_requires=["pymongo", "mecab-python3", "jaconv", ""],
-    entry_points={
-    },
 )

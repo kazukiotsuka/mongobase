@@ -1,3 +1,10 @@
 *.pyc
 *~
 .idea
+venv
+testvenv
+tutorial/.ipynb_checkpoints
+distribution.sh
+distribution_test.sh
+install.sh
+install_test.sh

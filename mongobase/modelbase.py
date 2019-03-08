@@ -29,8 +29,7 @@
 import logging
 import datetime
 import sys
-sys.path.append("../../")
-from mongobase.exceptions import RequiredKeyIsNotSatisfied
+from .exceptions import RequiredKeyIsNotSatisfied
 
 
 class ModelBase(dict):

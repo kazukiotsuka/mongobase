@@ -45,14 +45,20 @@
 import csv
 import datetime
 import logging
-import unicodedata
 import inspect
-import jaconv
-import MeCab
 from pymongo import TEXT, MongoClient, ReturnDocument, DESCENDING, ASCENDING
 from pymongo.operations import InsertOne, ReplaceOne, UpdateOne, UpdateMany
-from mongobase.mongobase import ModelBase
-from mongobase.config import Config
+from .modelbase import ModelBase
+from .config import MONGO_DB_URI, MONGO_DB_URI_TEST, MONGO_DB_NAME, MONGO_DB_NAME_TEST,\
+    MONGO_DB_CONNECT_TIMEOUT_MS, MONGO_DB_SERVER_SELECTION_TIMEOUT_MS,\
+    MONGO_DB_SOCKET_TIMEOUT_MS, MONGO_DB_SOCKET_KEEP_ALIVE,\
+    MONGO_DB_MAX_IDLE_TIME_MS, MONGO_DB_MAX_POOL_SIZE,\
+    MONGO_DB_MIN_POOL_SIZE, MONGO_DB_WAIT_QUEUE_MULTIPLE,\
+    MONGO_DB_WAIT_QUEUE_TIMEOUT_MS, MONGO_DB_URI
+
+# NOTE: remove comment out when you use in the specific case for japanese
+# import MeCab
+# import jaconv
 
 
 class db_context(object):
@@ -64,7 +70,7 @@ class db_context(object):
         ...   obj.update({'index': 2})
         ...   resu
     """
-    def __init__(self, db_uri=Config.MONGO_DB_URI, db_name=None):
+    def __init__(self, db_uri=MONGO_DB_URI, db_name=None):
         assert db_uri and db_name, 'db_uri and db_name must be specified'
         self.__db_uri__ = db_uri
         self.__db_name__ = db_name
@@ -72,15 +78,15 @@ class db_context(object):
     def create_db(self, db_uri, db_name):
         self.__db = MongoClient(
             db_uri,
-            connectTimeoutMS=Config.MONGO_DB_CONNECT_TIMEOUT_MS,
-            serverSelectionTimeoutMS=Config.MONGO_DB_SERVER_SELECTION_TIMEOUT_MS,
-            socketTimeoutMS=Config.MONGO_DB_SOCKET_TIMEOUT_MS,
-            socketKeepAlive=Config.MONGO_DB_SOCKET_KEEP_ALIVE,
-            maxIdleTimeMS=Config.MONGO_DB_MAX_IDLE_TIME_MS,
-            maxPoolSize=Config.MONGO_DB_MAX_POOL_SIZE,
-            minPoolSize=Config.MONGO_DB_MIN_POOL_SIZE,
-            waitQueueMultiple=Config.MONGO_DB_WAIT_QUEUE_MULTIPLE,
-            waitQueueTimeoutMS=Config.MONGO_DB_WAIT_QUEUE_TIMEOUT_MS
+            connectTimeoutMS=MONGO_DB_CONNECT_TIMEOUT_MS,
+            serverSelectionTimeoutMS=MONGO_DB_SERVER_SELECTION_TIMEOUT_MS,
+            socketTimeoutMS=MONGO_DB_SOCKET_TIMEOUT_MS,
+            socketKeepAlive=MONGO_DB_SOCKET_KEEP_ALIVE,
+            maxIdleTimeMS=MONGO_DB_MAX_IDLE_TIME_MS,
+            maxPoolSize=MONGO_DB_MAX_POOL_SIZE,
+            minPoolSize=MONGO_DB_MIN_POOL_SIZE,
+            waitQueueMultiple=MONGO_DB_WAIT_QUEUE_MULTIPLE,
+            waitQueueTimeoutMS=MONGO_DB_WAIT_QUEUE_TIMEOUT_MS
         )[db_name]
         return self.__db
 
@@ -97,27 +103,28 @@ class MongoBase(ModelBase):
     # __required_fields__ = []  # lists required keys
     # __default_values__ = {}  # set default values to some keys
     # __validators__ = {}  # set pairs like key: validatefunc()
+    __indexes__ = []  # set index for any key.
     __search_text_keys__ = []  # index keys for text search. [('key', weight(int)),..] if weighted_type is 'weighted'
     __search_text_index_unit__ = 'bigram'  # either bigram or morpheme
-    __search_text_index_with_kana__ = False  # add kana from mecab to the index if True
-    __search_text_index_with_unigram__ = False  # add unigram to the index if True
-    __search_text_weight_type__ = 'uniform'  # designate weights to each text index key if 'weighted'
-    __indexes__ = []  # set index for any key.
 
-    __db_uri__ = Config.MONGO_DB_URI
-    __db_name__ = Config.MONGO_DB_NAME
+    # NOTE: remove comment out when you use in the specific case for japanese
+    # __search_text_index_with_unigram__ = False  # add unigram to the index if True
+    # __search_text_weight_type__ = 'uniform'  # designate weights to each text index key if 'weighted'
+
+    __db_uri__ = MONGO_DB_URI
+    __db_name__ = MONGO_DB_NAME
 
     __db = MongoClient(
             __db_uri__,
-            connectTimeoutMS=Config.MONGO_DB_CONNECT_TIMEOUT_MS,
-            serverSelectionTimeoutMS=Config.MONGO_DB_SERVER_SELECTION_TIMEOUT_MS,
-            socketTimeoutMS=Config.MONGO_DB_SOCKET_TIMEOUT_MS,
-            socketKeepAlive=Config.MONGO_DB_SOCKET_KEEP_ALIVE,
-            maxIdleTimeMS=Config.MONGO_DB_MAX_IDLE_TIME_MS,
-            maxPoolSize=Config.MONGO_DB_MAX_POOL_SIZE,
-            minPoolSize=Config.MONGO_DB_MIN_POOL_SIZE,
-            waitQueueMultiple=Config.MONGO_DB_WAIT_QUEUE_MULTIPLE,
-            waitQueueTimeoutMS=Config.MONGO_DB_WAIT_QUEUE_TIMEOUT_MS
+            connectTimeoutMS=MONGO_DB_CONNECT_TIMEOUT_MS,
+            serverSelectionTimeoutMS=MONGO_DB_SERVER_SELECTION_TIMEOUT_MS,
+            socketTimeoutMS=MONGO_DB_SOCKET_TIMEOUT_MS,
+            socketKeepAlive=MONGO_DB_SOCKET_KEEP_ALIVE,
+            maxIdleTimeMS=MONGO_DB_MAX_IDLE_TIME_MS,
+            maxPoolSize=MONGO_DB_MAX_POOL_SIZE,
+            minPoolSize=MONGO_DB_MIN_POOL_SIZE,
+            waitQueueMultiple=MONGO_DB_WAIT_QUEUE_MULTIPLE,
+            waitQueueTimeoutMS=MONGO_DB_WAIT_QUEUE_TIMEOUT_MS
         )[__db_name__]
 
     def __init__(self, init_dict):
@@ -132,11 +139,11 @@ class MongoBase(ModelBase):
         db_uri = db_uri if db_uri else cls.__db_uri__
         return MongoClient(
             db_uri,
-            connectTimeoutMS=Config.MONGO_DB_CONNECT_TIMEOUT_MS,
-            serverSelectionTimeoutMS=Config.MONGO_DB_SERVER_SELECTION_TIMEOUT_MS,
-            socketTimeoutMS=Config.MONGO_DB_SOCKET_TIMEOUT_MS,
-            socketKeepAlive=Config.MONGO_DB_SOCKET_KEEP_ALIVE,
-            maxIdleTimeMS=Config.MONGO_DB_MAX_IDLE_TIME_MS
+            connectTimeoutMS=MONGO_DB_CONNECT_TIMEOUT_MS,
+            serverSelectionTimeoutMS=MONGO_DB_SERVER_SELECTION_TIMEOUT_MS,
+            socketTimeoutMS=MONGO_DB_SOCKET_TIMEOUT_MS,
+            socketKeepAlive=MONGO_DB_SOCKET_KEEP_ALIVE,
+            maxIdleTimeMS=MONGO_DB_MAX_IDLE_TIME_MS
         )
 
     @classmethod
@@ -160,9 +167,9 @@ class MongoBase(ModelBase):
 
         Set cls.__db for the default.
         """
-        MongoBase.__db_uri__ = Config.MONGO_DB_URI
-        MongoBase.__db_name__ = Config.MONGO_DB_NAME
-        MongoBase.__db = cls._client(Config.MONGO_DB_URI)[Config.MONGO_DB_NAME]
+        MongoBase.__db_uri__ = MONGO_DB_URI
+        MongoBase.__db_name__ = MONGO_DB_NAME
+        MongoBase.__db = cls._client(MONGO_DB_URI)[MONGO_DB_NAME]
 
     def save(self, db=None):
         return self.insertIfNotExistsWithKeys('_id', db=db)
@@ -349,14 +356,15 @@ class MongoBase(ModelBase):
                 document.update(
                     {'search_text': search_gram})
                 self.search_text = search_gram
-            elif self.__search_text_index_unit__ == 'morpheme':
-                search_morpheme = self.generateSearchMorphemeStr(
-                    search_text,
-                    with_kana=self.__search_text_index_with_kana__,
-                    with_unigram=self.__search_text_index_with_unigram__
-                )
-                document.update({'search_text': search_morpheme})
-                self.search_text = search_morpheme
+            # NOTE: remove comment out when you use in the specific case for japanese
+            # elif self.__search_text_index_unit__ == 'morpheme':
+            #     search_morpheme = self.generateSearchMorphemeStr(
+            #         search_text,
+            #         with_kana=self.__search_text_index_with_kana__,
+            #         with_unigram=self.__search_text_index_with_unigram__
+            #     )
+            #     document.update({'search_text': search_morpheme})
+            #     self.search_text = search_morpheme
             else:
                 raise Exception('index unit must be either bigram or morpheme')
         # validate
@@ -497,12 +505,13 @@ class MongoBase(ModelBase):
 
             if cls.__search_text_index_unit__ == 'bigram':
                 update['search_text'] = cls.generateSearchBiGramStr(search_text)
-            elif cls.__search_text_index_unit__ == 'morpheme':
-                update['search_text'] = cls.generateSearchMorphemeStr(
-                    search_text,
-                    with_kana=cls.__search_text_index_with_kana__,
-                    with_unigram=cls.__search_text_index_with_unigram__
-                )
+            # NOTE: remove comment out when you use in the specific case for japanese
+            # elif cls.__search_text_index_unit__ == 'morpheme':
+            #     update['search_text'] = cls.generateSearchMorphemeStr(
+            #         search_text,
+            #         with_kana=cls.__search_text_index_with_kana__,
+            #         with_unigram=cls.__search_text_index_with_unigram__
+            #     )
             else:
                 raise Exception('index unit must be either bigram or morpheme')
         # validate
@@ -593,35 +602,36 @@ class MongoBase(ModelBase):
         texts = origin_text.split(' ')
         return ' '.join([generate(text) for text in texts])
 
-    @staticmethod
-    def generateSearchMorphemeStr(origin_text, with_kana=False, with_unigram=False):
-        """Generate Morpheme from original text for text search
+    # NOTE: remove comment out when you use in the specific case for japanese
+    # @staticmethod
+    # def generateSearchMorphemeStr(origin_text, with_kana=False, with_unigram=False):
+    #     """Generate Morpheme from original text for text search
 
-        args:
-            origin_text (str): original text
-            with_kana (bool): True if add yomi to text
-            with_unigram (bool): if True, add unigram
-        returns:
-            parced_text (str): parsed text
-        """
-        preprocessed_text = unicodedata.normalize('NFKC', origin_text)
+    #     args:
+    #         origin_text (str): original text
+    #         with_kana (bool): True if add yomi to text
+    #         with_unigram (bool): if True, add unigram
+    #     returns:
+    #         parced_text (str): parsed text
+    #     """
+    #     preprocessed_text = unicodedata.normalize('NFKC', origin_text)
 
-        if with_kana:
-            tagger = MeCab.Tagger("-O chasen -u {}".format(Config.FOOD_NAME_MECAB_DIC_PATH))
-            morphs = tagger.parse(preprocessed_text).split('\n')[:-2]
-            text_by_morph = ' '.join(
-                [morph.split('\t')[0] for morph in morphs] + [morph.split('\t')[1] for morph in morphs]
-            )
-        else:
-            tagger = MeCab.Tagger("-O wakati -u {}".format(Config.FOOD_NAME_MECAB_DIC_PATH))
-            text_by_morph = tagger.parse(preprocessed_text).replace(' \n', '')
+    #     if with_kana:
+    #         tagger = MeCab.Tagger("-O chasen -u {}".format(FOOD_NAME_MECAB_DIC_PATH))
+    #         morphs = tagger.parse(preprocessed_text).split('\n')[:-2]
+    #         text_by_morph = ' '.join(
+    #             [morph.split('\t')[0] for morph in morphs] + [morph.split('\t')[1] for morph in morphs]
+    #         )
+    #     else:
+    #         tagger = MeCab.Tagger("-O wakati -u {}".format(FOOD_NAME_MECAB_DIC_PATH))
+    #         text_by_morph = tagger.parse(preprocessed_text).replace(' \n', '')
 
-        if with_unigram:
-            text_by_morph = text_by_morph + ' ' + ' '.join([char for char in preprocessed_text])
-        return text_by_morph
+    #     if with_unigram:
+    #         text_by_morph = text_by_morph + ' ' + ' '.join([char for char in preprocessed_text])
+    #     return text_by_morph
 
     @classmethod
-    def textSearch(cls, text, limit, skip, query=None, sort=None, with_kana=False, with_unigram=False,
+    def textSearch(cls, text, limit, skip, query=None, sort=None, # with_kana=False, with_unigram=False,
                    db=None, **kwargs):
         """Find by text search and return all matched instances.
 
@@ -639,12 +649,13 @@ class MongoBase(ModelBase):
 
         if cls.__search_text_index_unit__ == 'bigram':
             query['$text'] = {'$search': cls.generateSearchBiGramStr(text)}
-        elif cls.__search_text_index_unit__ == 'morpheme':
-            text = ' '.join([text, jaconv.hira2kata(text)])  # add kata-kana converted from hira-kana
-            print(text)
-            query['$text'] = {
-                '$search': cls.generateSearchMorphemeStr(text, with_kana=with_kana, with_unigram=with_unigram)
-            }
+        # NOTE: remove comment out when you use in the specific case for japanese
+        # elif cls.__search_text_index_unit__ == 'morpheme':
+        #     text = ' '.join([text, jaconv.hira2kata(text)])  # add kata-kana converted from hira-kana
+        #     print(text)
+        #     query['$text'] = {
+        #         '$search': cls.generateSearchMorphemeStr(text, with_kana=with_kana, with_unigram=with_unigram)
+        #     }
         else:
             raise Exception('index unit must be either bigram or morpheme')
 
