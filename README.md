@@ -17,7 +17,7 @@ More About MongoBase
 |**mongobase** | an high-level interface with model definition system from ModelBase and many database operations|
 |**modelbase** | an OR Mapper class with automatic type checking according to the defined structure (MongoBase subclass)|
 
-The philosophies on MongoBase are
+Philosophies on MongoBase are
 - enable to use MongoDB on python easily and programatically safely
 - cleary viewable everything about the data model just by a quick looking over the model definition
 - easy to learn how to use. for instance, method names correspond to MongoDB to be able to use them as if on the mongoclient.
@@ -26,10 +26,12 @@ The philosophies on MongoBase are
 
 
 
-The introduction of Basic Interfaces
+Basic Interfaces
 ---------------------------
 
 #### Model Definition
+
+Here is the sample definition of a model.
 
 ```python
 class Bird(MongoBase):
@@ -59,8 +61,24 @@ class Bird(MongoBase):
     ]
 ```
 
-Insert & Update
----------------------------
+The core model structure is defined as `__structure__` by a dictionaly. It is possible to cleary find out how the document structure is.
+Other components of the model definition is:
+
+| Component | Description |
+| ---- | --- |
+| `__collection__`| the collection name of the document. (required)|
+| `__structure__`| the core definition of the model. the type is automatically checked everytime when it is written on the db. the key `_id` is required. (required)|
+| `__required_fields__`| required properties. (optional)|
+| `__default_values__`| set default values for properties. (optional)|
+| `__validators__`| validator methods automatically check the value when the document is written on the db. (optional)|
+| `__search_text_keys__`| multiple keys can be set for the search text index. automatically written as the `search_text` property. (optional)|
+| `__search_index_type__`| `bigram`: value of `search_text` is set as bigram strings. `morpheme`: the string in `search_text` is parsed to morphemes (optional)|
+| `__indexes__`| indexes can be set. `.createIndex()` method creates the indexes on the db. (optional)|
+
+
+Now the basic usages are introduced.
+
+#### Insert & Update
 ```python
 >> chicken = Bird({'_id': ObjectId(), 'name': 'chicken', 'age': 3})
 >> chicken.save()
@@ -93,7 +111,7 @@ list of mongobase instances are returned.
 201
 ```
 
-#### Bulk Operation
+#### Bulk Operations
 
 - bulk_insert
 ```python
@@ -104,9 +122,8 @@ list of mongobase instances are returned.
 10000
 ```
 
-```
 - bulk_update
-
+```
 >>> updates = []
 >>> for pigeon in many_pigeon:
 >>>    pigeon.age *= 3
@@ -184,6 +201,33 @@ Release and Contributing
 Many methods are the wrapper of pymongo.  
 There are a lot of features that this library is covering.  
 Would appreciate if you add their methods anytime.
+
+
+
+#### version 0.3.0
+##### New features
+- bulk_insert()
+- bulk_update()
+- performance improvement with ConnectionPool (single MongoClient for each process)
+- MongoBase_start_guide.ipynb
+- contextual db client mode by  `with db_context() as db`
+- code efficiency improvement
+- abolished `insert_if_not_exists` parameter for `save(), update()`
+- changed some method names (e.g. remove -> delete)
+- using pymongo > 3.5 methods (e.g. insert_one()) 
+- enhance documents
+
+#### version 0.2.0
+##### New features
+- MongoBase and ModelBase class are separated
+- enable to use MongoClient instance dynamically
+- some useful mongodb operations are added
+
+#### version 0.1.0
+##### New features
+- The initial implementation
+- automatic type checking mechanism
+- basic mongodb operations
 
 
 License
