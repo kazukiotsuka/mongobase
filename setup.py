@@ -6,7 +6,7 @@ with open("README.md", "r") as f:
 
 setuptools.setup(
     name="mongobase",
-    version="0.3.0a0",
+    version="0.3.1a0",
     author="Kazuki Otsuka",
     author_email="otsuka.kazuki@googlemail.com",
     description="A lightweight Pythonic OR Mapper for MongoDB.",

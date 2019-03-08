@@ -72,7 +72,8 @@ Other components of the model definition is:
 | `__default_values__`| set default values for properties. (optional)|
 | `__validators__`| validator methods automatically check the value when the document is written on the db. (optional)|
 | `__search_text_keys__`| multiple keys can be set for the search text index. automatically written as the `search_text` property. (optional)|
-| `__search_index_type__`| `bigram`: value of `search_text` is set as bigram strings. `morpheme`: the string in `search_text` is parsed to morphemes (optional)|
+| `__search_text_index_type__`| `bigram`: value of `search_text` is set as bigram strings. `morpheme`: the string in `search_text` is parsed to morphemes (optional)|
+| `__search_text_weight_type__`| `uniform`: each string has the same weight. `weighted`: enable to set weights as `[('key1', 3), ('key2', 1)]` (optional)|
 | `__indexes__`| indexes can be set. `.createIndex()` method creates the indexes on the db. (optional)|
 
 

@@ -106,10 +106,10 @@ class MongoBase(ModelBase):
     __indexes__ = []  # set index for any key.
     __search_text_keys__ = []  # index keys for text search. [('key', weight(int)),..] if weighted_type is 'weighted'
     __search_text_index_unit__ = 'bigram'  # either bigram or morpheme
+    __search_text_weight_type__ = 'uniform'  # designate weights to each text index key if 'weighted'
 
     # NOTE: remove comment out when you use in the specific case for japanese
     # __search_text_index_with_unigram__ = False  # add unigram to the index if True
-    # __search_text_weight_type__ = 'uniform'  # designate weights to each text index key if 'weighted'
 
     __db_uri__ = MONGO_DB_URI
     __db_name__ = MONGO_DB_NAME
